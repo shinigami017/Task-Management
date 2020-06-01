@@ -9,7 +9,8 @@ var express = require("express"),
 var app = express();
 
 // Connect to MongoDB
-mongoose.connect("mongodb://localhost/TaskManagement", { useNewUrlParser: true, useUnifiedTopology: true });
+const Connection_URI = process.env.MONGODB_URI || "mongodb://localhost/TaskManagement";
+mongoose.connect(Connection_URI, { useNewUrlParser: true, useUnifiedTopology: true });
 
 // EJS and View Engine
 app.set("views", path.join(__dirname, "views"));

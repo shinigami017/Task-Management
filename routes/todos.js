@@ -7,7 +7,7 @@ const Todo = require("../models/todo");
 
 // Get all Todos
 router.get("/", isLoggedIn, function(request, response) {
-    User.findById(request.params.userId).populate("todos").exec(function(error, user) {
+    User.findById(request.userData.userId).populate("todos").exec(function(error, user) {
         if (error) {
             return response.status(400).json({ error: error });
         }
@@ -20,20 +20,20 @@ router.get("/", isLoggedIn, function(request, response) {
 
 // Add a todo
 router.post("/", isLoggedIn, function(request, response) {
-    let { title, label, duedate, status } = request.body;
-    let creator = request.params.userId;
+    let { title, label, duedate } = request.body;
+    let creator = request.userData.userId;
     if (!title) {
         return response.status(400).json({ message: "Title is required" });
     }
     if (!duedate) {
         return response.status(400).json({ message: "Due Date is required" });
     }
-    let newTodo = new Todo({ title, label, duedate, status, creator });
+    let newTodo = new Todo({ title, label, duedate, creator });
     newTodo.save(function(error, todo) {
         if (error) {
             return response.status(400).json({ error: error });
         }
-        User.findById(request.params.userId).populate("todos").exec(function(error, user) {
+        User.findById(request.userData.userId).populate("todos").exec(function(error, user) {
             user.todos.push(todo);
             user.save(function(error, updatedUser) {
                 if (error) {
@@ -48,25 +48,25 @@ router.post("/", isLoggedIn, function(request, response) {
     });
 });
 
+// Update to-do 
 router.put("/:todoId", isLoggedIn, function(request, response) {
     if (request.query.archived) {
-        Todo.update({ _id: request.params.todoId }, { $set: { archived: request.query.archived } }, function(error, updatedTodo) {
+        Todo.updateOne({ _id: request.params.todoId }, { $set: { archived: request.query.archived } }, function(error, updatedTodo) {
+            if (error) {
+                return response.status(400).json({ error: error });
+            }
+            return response.json(updatedTodo);
+        });
+
+    } else if (request.query.status) {
+        Todo.updateOne({ _id: request.params.todoId }, { $set: { status: request.query.status } }, function(error, updatedTodo) {
             if (error) {
                 return response.status(400).json({ error: error });
             }
             return response.json(updatedTodo);
         });
     }
-    if (request.query.status) {
-        if (request.query.archived) {
-            Todo.update({ _id: request.params.todoId }, { $set: { status: request.query.status } }, function(error, updatedTodo) {
-                if (error) {
-                    return response.status(400).json({ error: error });
-                }
-                return response.json(updatedTodo);
-            });
-        }
-    }
+
     // Todo.findById(request.params.todoId, function(error, foundTodo) {
     //     if (error) {
     //         return response.status(400).json({ error: error });
@@ -76,10 +76,10 @@ router.put("/:todoId", isLoggedIn, function(request, response) {
     //         if (error) {
     //             return response.status(400).json({ error: error });
     //         }
-    //         return response.json(updatedTodo);
+    //         response.setHeader("Content-Type", "application/json");
+    //         return response.status(200).json(updatedTodo);
     //     });
-    // });
-    return response.json({ message: "Update query for status or archived in todo not found." });
+    else { return response.json({ message: "Update query for status or archived in todo not found." }); }
 });
 
 

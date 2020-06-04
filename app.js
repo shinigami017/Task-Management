@@ -42,7 +42,7 @@ const userRoute = require("./routes/users"),
     todosRoute = require("./routes/todos");
 // app.use("/", indexRoute);
 app.use("/users", userRoute);
-app.use("/users/:userId/todos", todosRoute);
+app.use("/todos", todosRoute);
 
 // Port Setup
 app.set("port", (process.env.PORT || 3000));

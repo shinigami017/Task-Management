@@ -36,7 +36,7 @@ router.post("/", function(request, response) {
     }
     User.findOne({ email: email }, function(error, user) {
         if (user) {
-            return response.status(400).json({ message: "Email already registered" });
+            return response.status(400).json({ message: "Email already registered." });
         } else {
             let newUser = new User({ name, email, password });
             bcrypt.genSalt(10, function(error, salt) {
@@ -47,7 +47,7 @@ router.post("/", function(request, response) {
                         if (error) {
                             return response.json({ error: error });
                         }
-                        request.json(user);
+                        response.json(user);
                     });
                 });
             });
@@ -57,17 +57,18 @@ router.post("/", function(request, response) {
 
 // Login User
 router.post("/login", function(request, response, next) {
-    User.findOne({ username: request.body.username }, function(error, foundUser) {
+    User.findOne({ email: request.body.email }, function(error, foundUser) {
         if (error || !foundUser) {
-            return response.status(400).json({ message: "Invalid Username or Password" });
+            return response.status(400).json({ message: "Invalid Email or Password" });
         }
         bcrypt.compare(request.body.password, foundUser.password, function(error, result) {
             if (error) {
-                return response.status(400).json({ message: "Invalid Username or Password" });
+                return response.status(400).json({ message: "Invalid Email or Password" });
             }
             if (result) {
                 const token = jwt.sign({
-                        username: foundUser.username,
+                        useremail: foundUser.email,
+                        username: foundUser.name,
                         userId: foundUser._id
                     },
                     "secret_key", {
@@ -76,7 +77,7 @@ router.post("/login", function(request, response, next) {
                 );
                 return response.status(200).json({ message: "Login Successful", token: token });
             }
-            return response.status(400).json({ message: "Invalid Username or Password" });
+            return response.status(400).json({ message: "Invalid Email or Password" });
         });
     });
 });

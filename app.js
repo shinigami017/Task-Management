@@ -1,26 +1,26 @@
-var express = require("express"),
+const express = require("express"),
     path = require("path"),
-    flash = require("connect-flash"),
     session = require("express-session"),
+    bodyParser = require("body-parser"),
+    cookieParser = require("cookie-parser"),
     passport = require("passport"),
     mongoose = require("mongoose");
 
 // Init App
-var app = express();
+const app = express();
 
 // Connect to MongoDB
-const Connection_URI = process.env.MONGODB_URI || "mongodb://localhost/TaskManagement";
-mongoose.connect(Connection_URI, { useNewUrlParser: true, useUnifiedTopology: true });
-
-// EJS and View Engine
-app.set("views", path.join(__dirname, "views"));
-app.set("view engine", "ejs");
+const Connection_URI = process.env.MONGODB_URI || "mongodb+srv://shinigami017newuser:newuser1234@shinigami017-azees.mongodb.net/TaskManagement?retryWrites=true&w=majority";
+mongoose.connect(
+    Connection_URI, { useNewUrlParser: true, useUnifiedTopology: true, useCreateIndex: true }
+).then(() => console.log("DB Connected!")).catch(error => console.log(error));
 
 // Express body parser
-app.use(express.urlencoded({ extended: true }));
+app.use(bodyParser.urlencoded({ extended: false }));
+app.use(bodyParser.json());
 
-// Set Static Folder
-app.use(express.static(path.join(__dirname, "public")));
+// Set up cookie parser
+app.use(cookieParser());
 
 // Express Session Middleware
 app.use(session({
@@ -36,26 +36,13 @@ app.use(passport.session());
 // Passport Config
 require("./config/passport")(passport);
 
-// Connect Flash Middleware
-app.use(flash());
-
-// Global vars for flash messages
-app.use(function(request, response, next) {
-    response.locals.messages = require("express-messages")(request, response);
-    response.locals.success_msg = request.flash("success_msg");
-    response.locals.error_msg = request.flash("error_msg");
-    response.locals.error = request.flash("error");
-    response.locals.currentUser = request.user || null;
-    next();
-});
-
 // Routes
-var indexRoute = require("./routes/index"),
-    userRoute = require("./routes/users"),
-    homeRoute = require("./routes/home");
-app.use("/", indexRoute);
+// const indexRoute = require("./routes/index"),
+const userRoute = require("./routes/users"),
+    todosRoute = require("./routes/todos");
+// app.use("/", indexRoute);
 app.use("/users", userRoute);
-app.use("/home", homeRoute);
+app.use("/users/:userId/todos", todosRoute);
 
 // Port Setup
 app.set("port", (process.env.PORT || 3000));

@@ -1,96 +1,90 @@
-var express = require("express"),
+const express = require("express"),
     router = express.Router(),
     bcrypt = require("bcryptjs"),
+    jwt = require("jsonwebtoken"),
     passport = require("passport");
 
 // Load User Model
-var User = require("../models/user");
-var { forwardAuthenticated } = require('../config/auth');
-
-// Register Form
-router.get("/register", forwardAuthenticated, function(request, response) {
-    response.render("register");
-});
-
-// Login Form
-router.get("/login", forwardAuthenticated, function(request, response) {
-    response.render("login");
-});
+const User = require("../models/user");
 
 // Register User
-router.post("/register", function(request, response) {
-    var { name, email, password, password2 } = request.body;
-    let errors = [];
+router.post("/", function(request, response) {
+    let { name, email, password, password2 } = request.body;
 
     if (!name) {
-        errors.push({ msg: "Please enter your name" });
+        return response.status(400).json({ message: "Please enter your name" });
     }
 
     if (!email) {
-        errors.push({ msg: "Please enter email" });
+        return response.status(400).json({ message: "Please enter your email" });
     }
 
     if (!password) {
-        errors.push({ msg: "Please enter password" });
+        return response.status(400).json({ message: "Please enter password" });
     }
 
     if (!password2) {
-        errors.push({ msg: "Please confirm password" });
+        return response.status(400).json({ message: "Please confirm password" });
     }
 
     if (password != password2) {
-        errors.push({ msg: "Passwords do not match" });
+        return response.status(400).json({ message: "Passwords do not match" });
     }
 
     if (password.length < 6) {
-        errors.push({ msg: "Password must be at least 6 character long" });
+        return response.status(400).json({ message: "Password must be at least 6 character long" });
     }
-
-    if (errors.length > 0) {
-        response.render("register", { errors, name, email, password, password2 });
-    } else {
-        User.findOne({ email: email }, function(error, user) {
-            if (user) {
-                errors.push({ msg: "Email already registered" });
-                response.render("register", { errors, name, email, password, password2 });
-            } else {
-                var newUser = new User({ name, email, password });
-                bcrypt.genSalt(10, function(error, salt) {
-                    bcrypt.hash(newUser.password, salt, function(error, hash) {
-                        if (error) throw error;
-                        newUser.password = hash;
-                        newUser.save(function(error, user) {
-                            if (error) {
-                                return console.log(error);
-                            }
-                            request.flash("success_msg", "You're successfully registered. Log in to continue");
-                            response.redirect("/users/login");
-                        });
+    User.findOne({ email: email }, function(error, user) {
+        if (user) {
+            return response.status(400).json({ message: "Email already registered" });
+        } else {
+            let newUser = new User({ name, email, password });
+            bcrypt.genSalt(10, function(error, salt) {
+                bcrypt.hash(newUser.password, salt, function(error, hash) {
+                    if (error) throw error;
+                    newUser.password = hash;
+                    newUser.save(function(error, user) {
+                        if (error) {
+                            return response.json({ error: error });
+                        }
+                        request.json(user);
                     });
                 });
-            }
-        });
-    }
+            });
+        }
+    });
 });
 
 // Login User
-router.post("/login", passport.authenticate("local", {
-    successRedirect: "/home",
-    failureRedirect: "/users/login",
-    failureFlash: true
-}), function(request, response) {
-    response.redirect("/home");
+router.post("/login", function(request, response, next) {
+    User.findOne({ username: request.body.username }, function(error, foundUser) {
+        if (error || !foundUser) {
+            return response.status(400).json({ message: "Invalid Username or Password" });
+        }
+        bcrypt.compare(request.body.password, foundUser.password, function(error, result) {
+            if (error) {
+                return response.status(400).json({ message: "Invalid Username or Password" });
+            }
+            if (result) {
+                const token = jwt.sign({
+                        username: foundUser.username,
+                        userId: foundUser._id
+                    },
+                    "secret_key", {
+                        expiresIn: "1h"
+                    }
+                );
+                return response.status(200).json({ message: "Login Successful", token: token });
+            }
+            return response.status(400).json({ message: "Invalid Username or Password" });
+        });
+    });
 });
 
 // Logout User
-// router.get("/logout", function(request, response) {
-//     request.logout();
-//     request.flash("success_msg", "You're successfully logged out");
-//     response.redirect("/users/login");
-// });
 router.get("/logout", function(request, response) {
     request.logout();
-    response.redirect("/");
+    response.json({ message: "You're successfully logged out" });
 });
 
 module.exports = router;
